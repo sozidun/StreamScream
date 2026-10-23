@@ -1,0 +1,99 @@
+/* ==========================================================================
+   ВНЕШНИЙ ВИД СТРАНИЦЫ ДЛЯ ЗРИТЕЛЕЙ.
+   Меняй значения справа от двоеточия в блоке :root, сохрани и обнови страницу (F5).
+   Цвета можно писать так: #ffc107  или  rgb(255,193,7)  или названием (red).
+   Тексты, логотип и ссылки - в соседнем файле settings.js.
+   ========================================================================== */
+:root {
+  /* ----- Фон страницы ----- */
+  --bg: #0f0f14;                  /* цвет фона сверху */
+  --bg2: #24103f;                 /* цвет фона снизу (получается плавный переход; впиши тот же цвет, если переход не нужен) */
+  --bg-image: none;               /* картинка фона: url('bg.jpg')  (проще указать её в settings.js, строка background) */
+
+  /* ----- Карточки и текст ----- */
+  --card: rgba(28, 28, 40, 0.82); /* фон карточек (последнее число - прозрачность: 1 = непрозрачный) */
+  --line: #3a3a52;                /* цвет тонких линий и рамок */
+  --text: #f4f4fa;                /* основной цвет текста */
+  --dim: #a0a0b8;                 /* цвет второстепенного текста */
+
+  /* ----- Акцентные цвета (кнопки, выбранный эффект, заголовок) ----- */
+  --accent: #ffc107;              /* главный акцент */
+  --accent2: #ff7a00;             /* второй цвет для плавного перехода на кнопке и заголовке */
+  --accent-text: #1a1200;         /* цвет текста на кнопке */
+  --title-bg: linear-gradient(90deg, #f4f4fa, #f4f4fa);   /* заливка заголовка. Однотонный: linear-gradient(#ffffff, #ffffff) */
+
+    /* ----- Свечение (у выбранного эффекта и у кнопки «Поддержать») ----- */
+  --glow-size: 24px;                      /* 0px = нет свечения, 12px = слабое, 40px = очень сильное */
+  --glow-color: rgba(255, 193, 7, 0.55);  /* цвет и сила: последнее число от 0 до 1 (0 = не видно, 1 = самое яркое) */
+
+  /* ----- Размеры и форма ----- */
+  --max-width: 640px;             /* ширина страницы на компьютере */
+  --radius: 18px;                 /* скругление карточек */
+  --btn-radius: 14px;             /* скругление кнопок */
+  --title-size: 32px;             /* размер заголовка */
+  --logo-size: 140px;             /* ширина логотипа */
+  --logo-radius: 20px;            /* скругление логотипа (50% = круглый) */
+
+  /* ----- Шрифт ----- */
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;   /* шрифт (должен быть на компьютере зрителя; безопасно оставить так) */
+}
+
+/* ==========================================================================
+   ДАЛЬШЕ - ОФОРМЛЕНИЕ. Если не уверен, лучше не менять.
+   ========================================================================== */
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; color: var(--text); font: 16px/1.45 var(--font);
+  background-image: var(--bg-image), linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+  background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;
+}
+.wrap { max-width: var(--max-width); margin: 0 auto; padding: 24px 16px 48px; }
+.hero { text-align: center; margin-bottom: 10px; }
+.logo { width: var(--logo-size); max-width: 60%; height: auto; border-radius: var(--logo-radius); margin-bottom: 10px; box-shadow: 0 6px 30px rgba(0,0,0,.45); }
+h1 { margin: 4px 0; font-size: var(--title-size); line-height: 1.15; background: var(--title-bg); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { color: var(--dim); }
+.hint { color: var(--dim); font-size: 14px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 16px 0; backdrop-filter: blur(8px); }
+.card h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+
+input, textarea {
+  width: 100%; background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px; font: inherit;
+}
+input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+textarea { resize: vertical; min-height: 70px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chip { background: rgba(255,255,255,.08); border: 1px solid var(--line); color: var(--text); border-radius: 99px; padding: 7px 16px; font: inherit; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+
+.gh { margin-top: 16px; font-weight: 600; }
+.fx {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: rgba(255,255,255,.06); border: 2px solid transparent; border-left: 6px solid var(--c, var(--dim));
+  color: var(--text); border-radius: 12px; padding: 12px 14px; margin-top: 8px; font: inherit; cursor: pointer;
+  transition: transform .12s, background .12s, box-shadow .12s;
+}
+.fx:hover { transform: translateY(-1px); background: rgba(255,255,255,.11); }
+.fx.sel { border-color: var(--accent); background: rgba(255,255,255,.14); box-shadow: 0 0 var(--glow-size) var(--glow-color); }
+.fx.lock { opacity: .38; cursor: not-allowed; transform: none; }
+.fx small { color: var(--dim); }
+.price { white-space: nowrap; font-weight: 600; }
+
+#go {
+  width: 100%; border: 0; border-radius: var(--btn-radius); padding: 16px; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer;
+  color: var(--accent-text); background: linear-gradient(90deg, var(--accent), var(--accent2)); box-shadow: 0 8px var(--glow-size) -6px var(--glow-color);
+}
+#go:hover { filter: brightness(1.08); }
+#go:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.warn { background: rgba(255,193,7,.12); border: 1px solid rgba(255,193,7,.4); color: #ffe3a3; border-radius: 12px; padding: 10px 14px; font-size: 14px; margin-top: 12px; }
+code { background: rgba(0,0,0,.4); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+.links { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+.links a { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 99px; padding: 8px 18px; background: var(--card); }
+.links a:hover { border-color: var(--accent); }
+.foot { text-align: center; color: var(--dim); margin-top: 16px; font-size: 14px; }
+
+/* ==========================================================================
+   СВОЙ CSS: всё, что напишешь ниже, переопределит оформление выше.
+   Пример: .logo { animation: none; }
+   ========================================================================== */

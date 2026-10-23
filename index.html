@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Выбери эффект</title>
+<!--
+  СТРАНИЦА ДЛЯ ЗРИТЕЛЕЙ. В этом файле менять ничего не нужно:
+    settings.js          - тексты, логотип, ссылки
+    theme.css            - цвета, шрифты, размеры, фон
+    catalog_public.json  - эффекты и цены (создаётся САМ при каждом сохранении catalog.txt)
+  Все четыре файла должны лежать на сайте в одной папке.
+-->
+<link rel="stylesheet" href="theme.css">
+<script src="settings.js"></script>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const S = (typeof SETTINGS !== 'undefined') ? SETTINGS : {};
+const T = (k, d) => (S[k] !== undefined && S[k] !== null && S[k] !== '') ? S[k] : d;   // значение из settings.js или стандартное
+const $ = id => document.getElementById(id);
+const E = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
+const fill = (s, v) => String(s).replace(/\{(\w+)\}/g, (m, k) => v[k] !== undefined ? v[k] : m);
+const ls = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+let cfg = null, sel = null, sum = 100, CUR = '₽';
+
+fetch('catalog_public.json?v=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(d => { cfg = d; init(); })
+  .catch(() => { $('app').appendChild(E('h1', '', 'Не удалось загрузить список эффектов')).after(E('div', 'sub', 'Обновите страницу позже.')); });
+
+function groups() {
+  const all = [];
+  cfg.instruments.forEach(i => i.effects.forEach(e => all.push({ i: i, e: e })));
+  if (T('groupBy', 'instrument') === 'price') {
+    const by = {};
+    all.forEach(x => (by[x.e.min] = by[x.e.min] || []).push(x));
+    return Object.keys(by).map(Number).sort((a, b) => a - b)
+      .map(p => ({ head: fill(T('priceHeader', 'От {min} {cur}'), { min: p, cur: CUR }), items: by[p], full: true }));
+  }
+  return cfg.instruments.map(i => ({ head: i.icon + ' ' + i.name, full: false,
+    items: i.effects.slice().sort((a, b) => a.min - b.min).map(e => ({ i: i, e: e })) }));
+}
+
+function init() {
+  CUR = T('cur', cfg.cur || '₽');
+  document.title = T('title', cfg.title);
+  const bg = T('background', '');
+  if (bg) document.documentElement.style.setProperty('--bg-image', "url('" + bg + "')");
+
+  const app = $('app');
+  const hero = E('div', 'hero');
+  const logo = T('logo', '');
+  if (logo) { const im = E('img', 'logo'); im.src = logo; im.alt = ''; hero.appendChild(im); }
+  hero.appendChild(E('h1', '', T('title', cfg.title)));
+  hero.appendChild(E('div', 'sub', T('subtitle', cfg.hint || '')));
+  app.appendChild(hero);
+
+  const prices = [];
+  cfg.instruments.forEach(i => i.effects.forEach(e => prices.push(e.min)));
+  sum = prices.length ? Math.max(1, Math.min.apply(null, prices)) : 100;
+
+  // 1. имя и сумма
+  const c1 = E('div', 'card'); c1.appendChild(E('h2', '', T('stepWho', '1. Кто ты и сколько')));
+  const nm = E('input'); nm.id = 'nm'; nm.placeholder = T('namePlaceholder', 'Твой ник'); nm.maxLength = 40; nm.value = ls('nm');
+  const sm = E('input'); sm.id = 'sum'; sm.type = 'number'; sm.min = 1; sm.value = sum; sm.style.marginTop = '8px';
+  sm.oninput = () => { sum = Math.floor(Number(sm.value)) || 0; check(); };
+  c1.append(nm, sm);
+  const chips = E('div', 'chips');
+  Array.from(new Set(prices)).sort((a, b) => a - b).forEach(p => {
+    const b = E('button', 'chip', p + ' ' + CUR); b.onclick = () => { sum = p; sm.value = p; check(); }; chips.appendChild(b);
+  });
+  c1.appendChild(chips); app.appendChild(c1);
+
+  // 2. эффекты (первая кнопка - «без эффекта», выбрана по умолчанию)
+  const c2 = E('div', 'card'); c2.appendChild(E('h2', '', T('stepEffect', '2. Выбери эффект')));
+  const none = E('button', 'fx none'); none.dataset.none = '1';
+  const nl = E('span'); nl.appendChild(document.createTextNode(T('noEffectTitle', 'Без эффекта') + ' ')); nl.appendChild(E('small', '', T('noEffectHint', 'просто поддержать стрим')));
+  none.appendChild(nl); none.onclick = () => { sel = null; check(); };
+  c2.appendChild(none);
+  c2.appendChild(E('div', 'hint', T('lockedHint', '')));
+  groups().forEach(g => {
+    c2.appendChild(E('div', 'gh', g.head));
+    g.items.forEach(x => {
+      const b = E('button', 'fx'); b.style.setProperty('--c', x.i.color); b.dataset.code = x.e.code; b.dataset.min = x.e.min;
+      const l = E('span');
+      l.appendChild(document.createTextNode((g.full ? x.i.icon + ' ' + x.i.name + ' — ' : '') + x.e.title + ' '));
+      if (T('showDuration', true)) l.appendChild(E('small', '', x.e.dur + ' с'));
+      b.append(l, E('span', 'price', 'от ' + x.e.min + ' ' + CUR));
+      b.onclick = () => { if (b.classList.contains('lock')) return; sel = x; check(); };
+      c2.appendChild(b);
+    });
+  });
+  app.appendChild(c2);
+
+  // 3. сообщение
+  const c3 = E('div', 'card'); c3.appendChild(E('h2', '', T('stepMessage', '3. Сообщение (необязательно)')));
+  const tx = E('textarea'); tx.id = 'tx'; tx.maxLength = cfg.maxText || 100; tx.placeholder = T('messagePlaceholder', 'Что хочешь сказать стримеру?'); tx.oninput = check;
+  c3.appendChild(tx); app.appendChild(c3);
+
+  const go = E('button'); go.id = 'go'; go.onclick = pay; app.appendChild(go);
+  const note = E('div', 'warn', T('warnText', '')); note.id = 'note'; app.appendChild(note);
+
+  const fb = document.createElement('details'); fb.style.marginTop = '14px';
+  fb.appendChild(E('summary', 'hint', T('fallbackTitle', '')));
+  const fbt = E('div', 'hint', T('fallbackText', '') + ' '); const code = E('code'); code.id = 'fbMsg'; fbt.appendChild(code);
+  const cp = E('button', 'chip', 'Скопировать сообщение'); cp.style.marginTop = '8px';
+  cp.onclick = () => { try { navigator.clipboard.writeText(message()); cp.textContent = 'Скопировано ✓'; } catch (e) { cp.textContent = 'Выдели текст вручную'; } };
+  fb.append(fbt, cp); app.appendChild(fb);
+
+  const links = T('links', []);
+  if (links.length) { const w = E('div', 'links'); links.forEach(l => { const a = E('a', '', l.text); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; w.appendChild(a); }); app.appendChild(w); }
+  if (T('footer', '')) app.appendChild(E('div', 'foot', T('footer', '')));
+  check();
+}
+
+function message() { return (sel ? '#' + sel.e.code + ' ' : '') + ($('tx').value || ''); }
+
+function check() {
+  if (sel && sum < sel.e.min) sel = null;              // сумму уменьшили ниже цены - эффект снимается
+  document.querySelectorAll('.fx').forEach(b => {
+    if (b.dataset.none) { b.classList.toggle('sel', !sel); return; }
+    b.classList.toggle('lock', sum < Number(b.dataset.min));
+    b.classList.toggle('sel', !!sel && sel.e.code === b.dataset.code);
+  });
+  const go = $('go');
+  go.disabled = !(sum >= 1) || !cfg.url;
+  go.textContent = !(sum >= 1) ? T('buttonNoSum', 'Укажи сумму')
+    : fill(sel ? T('buttonTextEffect', 'Поддержать на {sum} {cur} · {effect}') : T('buttonText', 'Поддержать на {sum} {cur}'),
+           { sum: sum, cur: CUR, effect: sel ? sel.e.title : '' });
+  $('note').style.display = sel ? 'block' : 'none';
+  $('fbMsg').textContent = message();
+}
+
+function pay() {
+  try { localStorage.setItem('nm', $('nm').value); } catch (e) {}
+  if (T('copyMessage', true)) { try { navigator.clipboard.writeText(message()); } catch (e) {} }
+  const enc = encodeURIComponent;
+  location.href = cfg.url + (cfg.url.indexOf('?') >= 0 ? '&' : '?') + cfg.pAmount + '=' + enc(sum) + '&' + cfg.pName + '=' + enc($('nm').value || '') + '&' + cfg.pMsg + '=' + enc(message());
+}
+</script>
+</body>
+</html>
