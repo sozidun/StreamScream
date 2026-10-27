@@ -6,13 +6,14 @@
 <title>Выбери эффект</title>
 <!--
   СТРАНИЦА ДЛЯ ЗРИТЕЛЕЙ. В этом файле менять ничего не нужно:
-    settings.js          - тексты, логотип, ссылки
-    theme.css            - цвета, шрифты, размеры, фон
+    settings.js          - тексты, логотип, ссылки, поведение
+    theme.css            - цвета, шрифты, размеры, фон, свечение
     catalog_public.json  - эффекты и цены (создаётся САМ при каждом сохранении catalog.txt)
   Все четыре файла должны лежать на сайте в одной папке.
 -->
 <link rel="stylesheet" href="theme.css">
 <script src="settings.js"></script>
+<script src="qr.js"></script>
 </head>
 <body>
 <div class="wrap" id="app"></div>
@@ -29,7 +30,7 @@ let cfg = null, sel = null, sum = 100, CUR = '₽';
 fetch('catalog_public.json?v=' + Date.now())
   .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(d => { cfg = d; init(); })
-  .catch(() => { $('app').appendChild(E('h1', '', 'Не удалось загрузить список эффектов')).after(E('div', 'sub', 'Обновите страницу позже.')); });
+  .catch(() => { const a = $('app'); a.appendChild(E('h1', '', 'Не удалось загрузить список эффектов')); a.appendChild(E('div', 'sub', 'Обновите страницу позже.')); });
 
 function groups() {
   const all = [];
@@ -64,7 +65,7 @@ function init() {
 
   // 1. имя и сумма
   const c1 = E('div', 'card'); c1.appendChild(E('h2', '', T('stepWho', '1. Кто ты и сколько')));
-  const nm = E('input'); nm.id = 'nm'; nm.placeholder = T('namePlaceholder', 'Твой ник'); nm.maxLength = 40; nm.value = ls('nm');
+  const nm = E('input'); nm.id = 'nm'; nm.placeholder = T('namePlaceholder', 'Твой ник'); nm.maxLength = T('nameMaxLength', 30); nm.value = ls('nm');
   const sm = E('input'); sm.id = 'sum'; sm.type = 'number'; sm.min = 1; sm.value = sum; sm.style.marginTop = '8px';
   sm.oninput = () => { sum = Math.floor(Number(sm.value)) || 0; check(); };
   c1.append(nm, sm);
@@ -97,26 +98,32 @@ function init() {
 
   // 3. сообщение
   const c3 = E('div', 'card'); c3.appendChild(E('h2', '', T('stepMessage', '3. Сообщение (необязательно)')));
-  const tx = E('textarea'); tx.id = 'tx'; tx.maxLength = cfg.maxText || 100; tx.placeholder = T('messagePlaceholder', 'Что хочешь сказать стримеру?'); tx.oninput = check;
+  const tx = E('textarea'); tx.id = 'tx'; tx.maxLength = cfg.maxText || 100; tx.placeholder = T('messagePlaceholder', 'Что хочешь сказать стримеру?');
   c3.appendChild(tx); app.appendChild(c3);
 
   const go = E('button'); go.id = 'go'; go.onclick = pay; app.appendChild(go);
-  const note = E('div', 'warn', T('warnText', '')); note.id = 'note'; app.appendChild(note);
+  const pn = E('div', 'warn', T('prefillNote', '')); pn.id = 'pnote'; app.appendChild(pn);
 
-  const fb = document.createElement('details'); fb.style.marginTop = '14px';
-  fb.appendChild(E('summary', 'hint', T('fallbackTitle', '')));
-  const fbt = E('div', 'hint', T('fallbackText', '') + ' '); const code = E('code'); code.id = 'fbMsg'; fbt.appendChild(code);
-  const cp = E('button', 'chip', 'Скопировать сообщение'); cp.style.marginTop = '8px';
-  cp.onclick = () => { try { navigator.clipboard.writeText(message()); cp.textContent = 'Скопировано ✓'; } catch (e) { cp.textContent = 'Выдели текст вручную'; } };
-  fb.append(fbt, cp); app.appendChild(fb);
+  // подсказка про VPN, ссылка «оплатить с телефона» и плашка, которая появляется, если страница оплаты не открывается
+  if (T('vpnHint', '')) app.appendChild(E('div', 'hint', T('vpnHint', '')));
+  const hasQr = (typeof qrcode === 'function') && T('showQr', true);
+  if (hasQr) { const ql = E('button', 'chip', T('qrLink', 'Оплатить с телефона (QR-код)')); ql.style.marginTop = '10px'; ql.onclick = showQr; app.appendChild(ql); }
+  const vb = E('div', 'warn'); vb.id = 'vpn'; vb.style.display = 'none';
+  vb.appendChild(E('b', '', T('vpnTitle', 'Не открывается страница оплаты?')));
+  vb.appendChild(E('div', '', T('vpnText', 'Похоже, страница оплаты не открывается с твоего подключения. Чаще всего мешает VPN: выключи его на минуту (или выбери страну Россия) и нажми «Проверить снова».')));
+  const vr = E('button', 'chip', T('vpnRecheck', 'Проверить снова')); vr.style.marginTop = '8px'; vr.onclick = vpnCheck; vb.appendChild(vr);
+  app.appendChild(vb);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) vpnCheck(); });
 
   const links = T('links', []);
   if (links.length) { const w = E('div', 'links'); links.forEach(l => { const a = E('a', '', l.text); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; w.appendChild(a); }); app.appendChild(w); }
   if (T('footer', '')) app.appendChild(E('div', 'foot', T('footer', '')));
   check();
+  vpnCheck();
 }
 
-function message() { return (sel ? '#' + sel.e.code + ' ' : '') + ($('tx').value || ''); }
+// текст, который зритель вставит в поле «Сообщение» на странице оплаты
+function message() { return (sel ? '#' + sel.e.code + ' ' : '') + ($('tx').value || '').trim(); }
 
 function check() {
   if (sel && sum < sel.e.min) sel = null;              // сумму уменьшили ниже цены - эффект снимается
@@ -130,15 +137,76 @@ function check() {
   go.textContent = !(sum >= 1) ? T('buttonNoSum', 'Укажи сумму')
     : fill(sel ? T('buttonTextEffect', 'Поддержать на {sum} {cur} · {effect}') : T('buttonText', 'Поддержать на {sum} {cur}'),
            { sum: sum, cur: CUR, effect: sel ? sel.e.title : '' });
-  $('note').style.display = sel ? 'block' : 'none';
-  $('fbMsg').textContent = message();
+  $('pnote').style.display = (sel && T('prefill', false) && T('prefillNote', '')) ? 'block' : 'none';
+}
+
+// Ссылка на страницу оплаты. По умолчанию БЕЗ подстановки данных (надёжно для любого сервиса).
+function payUrl() {
+  if (!T('prefill', false)) return cfg.url;
+  const enc = encodeURIComponent;
+  return cfg.url + (cfg.url.indexOf('?') >= 0 ? '&' : '?') + cfg.pAmount + '=' + enc(sum) + '&' + cfg.pName + '=' + enc($('nm').value || '') + '&' + cfg.pMsg + '=' + enc(message());
+}
+
+function openPay() { if (T('openInNewTab', true)) window.open(payUrl(), '_blank'); else location.href = payUrl(); }
+
+function copyMsg(btn) {
+  let ok = true;
+  try { navigator.clipboard.writeText(message()); } catch (e) { ok = false; }
+  if (btn) btn.textContent = ok ? T('copied', 'Скопировано ✓') : 'Выдели текст и скопируй вручную';
 }
 
 function pay() {
   try { localStorage.setItem('nm', $('nm').value); } catch (e) {}
-  if (T('copyMessage', true)) { try { navigator.clipboard.writeText(message()); } catch (e) {} }
-  const enc = encodeURIComponent;
-  location.href = cfg.url + (cfg.url.indexOf('?') >= 0 ? '&' : '?') + cfg.pAmount + '=' + enc(sum) + '&' + cfg.pName + '=' + enc($('nm').value || '') + '&' + cfg.pMsg + '=' + enc(message());
+  if (T('copyMessage', true)) copyMsg(null);
+  if (sel && !T('prefill', false)) showSteps(); else openPay();   // с подстановкой или без эффекта - сразу на страницу оплаты
+}
+
+// Окно с тремя шагами: что вставить и что ввести на странице оплаты
+function showSteps() {
+  closeSteps();
+  const m = E('div', 'modal'); m.id = 'steps';
+  const c = E('div', 'card');
+  c.appendChild(E('h2', '', T('stepsTitle', 'Осталось 3 шага')));
+  const ol = E('ol');
+  ol.appendChild(E('li', '', T('step1', 'Нажми «Перейти к оплате» - откроется страница оплаты.')));
+  const li2 = E('li', '', T('step2', 'В поле «Сообщение» вставь этот текст (Ctrl+V, на телефоне - долгое нажатие → Вставить):'));
+  const box = E('div', 'msgbox', message()); li2.appendChild(box);
+  const cp = E('button', 'chip', T('copyAgain', 'Скопировать сообщение')); cp.onclick = () => copyMsg(cp); li2.appendChild(cp);
+  ol.appendChild(li2);
+  ol.appendChild(E('li', '', fill(T('step3', 'Введи сумму {sum} {cur} и свой ник, нажми «Поддержать» на странице оплаты.'), { sum: sum, cur: CUR })));
+  c.appendChild(ol);
+  c.appendChild(E('div', 'hint', T('stepsNote', 'Если на странице оплаты уже что-то подставлено - проверь: сумма и сообщение должны быть такими, как здесь.')));
+  const row = E('div', 'row');
+  const g = E('button', '', T('goText', 'Перейти к оплате')); g.id = 'go2'; g.onclick = openPay;
+  const x = E('button', 'chip', T('closeText', 'Назад')); x.onclick = closeSteps;
+  row.append(g, x); c.appendChild(row); m.appendChild(c); document.body.appendChild(m);
+}
+function closeSteps() { const m = $('steps'); if (m) m.remove(); }
+
+// Открывается ли страница оплаты с этого подключения (часто мешает VPN)? Проверка до нажатия «Поддержать».
+function reachable() {
+  let origin; try { origin = new URL(cfg.url).origin; } catch (e) { return Promise.resolve(true); }
+  const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 6000);
+  return fetch(origin + '/favicon.ico?_=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ac.signal })
+    .then(() => true, () => false).then(ok => { clearTimeout(tm); return ok; });
+}
+function vpnCheck() {
+  if (!T('vpnCheck', true) || !cfg || !cfg.url || !$('vpn')) return;
+  reachable().then(ok => { $('vpn').style.display = ok ? 'none' : 'block'; });
+}
+
+// QR-код со ссылкой на оплату (чтобы оплатить с телефона, где VPN можно не включать)
+function showQr() {
+  closeSteps();
+  const m = E('div', 'modal'); m.id = 'steps';
+  const c = E('div', 'card');
+  c.appendChild(E('h2', '', T('qrTitle', 'Оплата с телефона')));
+  const q = qrcode(0, 'M'); q.addData(payUrl()); q.make();
+  const box = E('div', 'qrbox'); box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });   // рисунок создаёт библиотека, текста зрителей в нём нет
+  c.appendChild(box);
+  c.appendChild(E('div', 'hint', T('qrText', 'Наведи камеру телефона на код: откроется страница оплаты с уже заполненными данными. Если страница не открывается, выключи VPN на телефоне.')));
+  const row = E('div', 'row'); const x = E('button', 'chip', T('closeText', 'Назад')); x.onclick = closeSteps; row.appendChild(x);
+  c.appendChild(row); m.appendChild(c); document.body.appendChild(m);
 }
 </script>
 </body>

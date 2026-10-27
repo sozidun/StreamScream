@@ -20,11 +20,11 @@
   --accent: #ffc107;              /* главный акцент */
   --accent2: #ff7a00;             /* второй цвет для плавного перехода на кнопке и заголовке */
   --accent-text: #1a1200;         /* цвет текста на кнопке */
-  --title-bg: linear-gradient(90deg, #f4f4fa, #f4f4fa);   /* заливка заголовка. Однотонный: linear-gradient(#ffffff, #ffffff) */
+  --title-bg: linear-gradient(90deg, #ffc107, #ff7a00);   /* заливка заголовка. Однотонный: linear-gradient(#ffffff, #ffffff) */
 
-    /* ----- Свечение (у выбранного эффекта и у кнопки «Поддержать») ----- */
-  --glow-size: 24px;                      /* 0px = нет свечения, 12px = слабое, 40px = очень сильное */
-  --glow-color: rgba(255, 193, 7, 0.55);  /* цвет и сила: последнее число от 0 до 1 (0 = не видно, 1 = самое яркое) */
+  /* ----- Свечение (у выбранного эффекта и у кнопки «Поддержать») ----- */
+  --glow-size: 24px;                      /* размер свечения: 0px = нет свечения, 12px = слабое, 40px = очень сильное */
+  --glow-color: rgba(255, 193, 7, 0.55);  /* цвет и сила свечения: последнее число от 0 до 1 (0 = не видно, 1 = самое яркое) */
 
   /* ----- Размеры и форма ----- */
   --max-width: 640px;             /* ширина страницы на компьютере */
@@ -92,6 +92,18 @@ code { background: rgba(0,0,0,.4); padding: 2px 6px; border-radius: 6px; word-br
 .links a { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 99px; padding: 8px 18px; background: var(--card); }
 .links a:hover { border-color: var(--accent); }
 .foot { text-align: center; color: var(--dim); margin-top: 16px; font-size: 14px; }
+
+/* ---------- Окно «Осталось 3 шага» ---------- */
+.modal { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.74); backdrop-filter: blur(4px); }
+.modal .card { max-width: 480px; width: 100%; margin: 0; max-height: 92vh; overflow: auto; }
+.modal ol { padding-left: 20px; margin: 8px 0 12px; }
+.modal li { margin: 12px 0; }
+.msgbox { margin: 8px 0; padding: 10px 12px; background: rgba(0,0,0,.45); border: 1px dashed var(--accent); border-radius: 10px; word-break: break-word; font-family: Consolas, monospace; }
+.modal .row { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.modal .row button:first-child { flex: 1; border: 0; border-radius: var(--btn-radius); padding: 14px; font: inherit; font-weight: 700; cursor: pointer; color: var(--accent-text); background: linear-gradient(90deg, var(--accent), var(--accent2)); box-shadow: 0 8px var(--glow-size) -6px var(--glow-color); }
+
+.qrbox { background: #fff; padding: 10px; border-radius: 12px; max-width: 260px; margin: 10px auto; }
+.qrbox svg { width: 100%; height: auto; display: block; }
 
 /* ==========================================================================
    СВОЙ CSS: всё, что напишешь ниже, переопределит оформление выше.
